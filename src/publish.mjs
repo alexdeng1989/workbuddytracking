@@ -11,7 +11,8 @@ export async function sendWecom(content,env) {
   if(data.errcode!==0)throw new DeliveryError(`wecom_rejected_${data.errcode}`,Number.isInteger(data.errcode));
   return {errcode:0};
 }
-export async function sendEmail(message,env) {
+export async function sendEmail(message,env,privateStore) {
+  if(env.EMAIL_TRANSPORT==='graph')return sendGraphMail(message,env,privateStore);
   for(const k of ['SMTP_HOST','SMTP_USER','SMTP_PASSWORD','SMTP_FROM','PRIVATE_EMAIL_TO'])if(!env[k])throw new DeliveryError(`missing_${k}`,true);
   if(!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(env.PRIVATE_EMAIL_TO))throw new DeliveryError('invalid_private_recipient',true);
   const transport=nodemailer.createTransport({host:env.SMTP_HOST,port:Number(env.SMTP_PORT||465),secure:env.SMTP_SECURE!=='false',auth:{user:env.SMTP_USER,pass:env.SMTP_PASSWORD},connectionTimeout:10000,greetingTimeout:10000,socketTimeout:20000});
@@ -21,6 +22,21 @@ export async function sendEmail(message,env) {
     return {messageId:result.messageId,accepted:result.accepted};
   }catch(e){if(e instanceof DeliveryError)throw e;throw new DeliveryError(e.code==='EAUTH'?'smtp_auth_rejected':'smtp_delivery_unknown',e.code==='EAUTH');}
   finally{transport.close();}
+}
+export async function sendGraphMail(message,env,store,fetcher=fetch){
+  for(const key of ['MICROSOFT_CLIENT_ID','MICROSOFT_REFRESH_TOKEN','PRIVATE_EMAIL_TO'])if(!env[key])throw new DeliveryError(`missing_${key}`,true);
+  let auth=await store.get('auth/microsoft');
+  if(!auth||auth.expiresAt<Date.now()+120000){
+    const form={client_id:env.MICROSOFT_CLIENT_ID,grant_type:'refresh_token',refresh_token:auth?.refreshToken||env.MICROSOFT_REFRESH_TOKEN,scope:'https://graph.microsoft.com/Mail.Send offline_access'};
+    if(env.MICROSOFT_CLIENT_SECRET)form.client_secret=env.MICROSOFT_CLIENT_SECRET;
+    let response;try{response=await fetcher('https://login.microsoftonline.com/consumers/oauth2/v2.0/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(form),signal:AbortSignal.timeout(15000)});}catch{throw new DeliveryError('microsoft_auth_unavailable',true);}
+    if(!response.ok)throw new DeliveryError('microsoft_auth_rejected',true);
+    const data=await response.json();if(!data.access_token||!data.expires_in)throw new DeliveryError('microsoft_auth_invalid',true);
+    auth={accessToken:data.access_token,refreshToken:data.refresh_token||form.refresh_token,expiresAt:Date.now()+data.expires_in*1000};await store.set('auth/microsoft',auth);
+  }
+  let response;try{response=await fetcher('https://graph.microsoft.com/v1.0/me/sendMail',{method:'POST',headers:{Authorization:`Bearer ${auth.accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({message:{subject:message.subject,body:{contentType:'Text',content:message.text},toRecipients:[{emailAddress:{address:env.PRIVATE_EMAIL_TO}}],internetMessageHeaders:[{name:'x-workbuddy-report-id',value:`${message.date}-${message.reportVersion}`}]},saveToSentItems:true}),signal:AbortSignal.timeout(15000)});}catch{throw new DeliveryError('graph_send_unknown');}
+  if(response.status!==202)throw new DeliveryError(`graph_http_${response.status}`,response.status>=400&&response.status<500);
+  return {provider:'microsoft-graph',accepted:true,status:202,requestId:response.headers.get('request-id')};
 }
 export class TencentDocs {
   constructor(env,store,fetcher=fetch){this.env=env;this.store=store;this.fetcher=fetcher;}

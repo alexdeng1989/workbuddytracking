@@ -1,6 +1,11 @@
 import {beijingDate,hash,publicItem,sinceDays,uniqueEvents} from './core.mjs';
 import {labels} from './sources.mjs';
 const short=(s,n)=>[...(s||'')].slice(0,n).join('');
+export function labeledDate(text,label){
+  const m=text.match(new RegExp(`${label}[：:\\s]{0,3}(20\\d{2})[年/-](\\d{1,2})[月/-](\\d{1,2})日?`));
+  if(!m)return null;const value=`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return !Number.isNaN(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value?value:null;
+}
 export function groundedFacts(candidate,facts) {
   return (facts||[]).filter(f=>typeof f.quote==='string'&&f.quote.length>=8&&candidate.evidenceText.includes(f.quote)&&typeof f.text==='string'&&f.text===f.quote).slice(0,5);
 }
@@ -20,18 +25,18 @@ export async function enrich(candidate,env) {
     facts=ranked.slice(0,3).map(({text:quote})=>({text:quote,quote}));
   }
   if(!facts.length)return null;
-  return {...candidate,facts,disclosure};
+  return {...candidate,facts,disclosure,relation:/work\s*buddy/i.test(candidate.evidenceText)?'direct':'related_ai_business',eventDate:labeledDate(candidate.evidenceText,'(?:活动时间|直播时间|活动日期)'),deadline:labeledDate(candidate.evidenceText,'(?:报名截止|截止时间|截止日期)')};
 }
-export function compileReport({date,now,cutoff,items,coverage}) {
+export function compileReport({date,now,cutoff,items,coverage,calendarItems=items}) {
   const recent=uniqueEvents(items.filter(x=>x.firstSeenAt<=now));
   const ordered=recent.sort((a,b)=>(a.group==='official'?0:a.group==='priority'?1:2)-(b.group==='official'?0:b.group==='priority'?1:2));
   const top=ordered.slice(0,5).map(publicItem);
   const sections=[['官方动态','official'],['重点竞对','priority'],['其他同行','peer']];
   const textItem=item=>{
-    const age=item.publishedAt?(item.publishedAt.slice(0,10)===date?'原文发布日期为今日':`原文发布：${item.publishedAt.slice(0,10)}`):'原文发布日期未提供';
-    return `【${item.entity}】${item.title}\n${age}；首次发现：${beijingDate(item.firstSeenAt)}；${item.disclosure}\n${item.facts.map(f=>`• ${f.text}`).join('\n')}\n${item.eventDate?`活动日期：${item.eventDate}\n`:''}${item.deadline?`截止日期：${item.deadline}\n`:''}${item.sources.map(s=>s.url).join('\n')}`;
+    const age=item.publishedAt?(item.publishedAt.slice(0,10)===date?'原文发布日期为今日':`原文发布：${item.publishedAt.slice(0,10)}`):item.updatedAt?`原文更新：${beijingDate(item.updatedAt)}（不等同首次发布）`:'原文发布日期未提供';
+    return `【${item.entity}】${item.title}\n${age}；首次发现：${beijingDate(item.firstSeenAt)}；${item.disclosure}${item.relation==='related_ai_business'?'；相关 AI 业务动态，尚无直接 WorkBuddy 关联证据':''}\n${item.facts.map(f=>`• ${f.text}`).join('\n')}\n${item.eventDate?`活动日期：${item.eventDate}\n`:''}${item.deadline?`截止日期：${item.deadline}\n`:''}${item.sources.map(s=>s.url).join('\n')}`;
   };
-  const upcoming=ordered.filter(x=>x.eventDate && x.eventDate>=date && x.eventDate<=sinceDays(now,-7).slice(0,10));
+  const upcoming=uniqueEvents(calendarItems).filter(x=>[x.eventDate,x.deadline].some(d=>d&&d>=date&&d<=beijingDate(sinceDays(now,-7))));
   const briefLines=top.map((x,i)=>`${i+1}. ${x.entity}：${short(x.facts[0]?.text,65)}${x.publishedAt?`（${x.publishedAt.slice(0,10)}）`:'（发布日期待核）'}${x.group==='official'?'':'〔对方披露〕'}`);
   const gaps=coverage.filter(x=>!['ok','no_new','changed'].includes(x.status));
   const brief=`WorkBuddy 情报日报｜${date}\n${top.length?briefLines.join('\n'):'本期未确认重要新增动态。'}\n${coverage.length} 个监测入口已登记；${gaps.length} 个入口存在覆盖缺口。未标发布日期的信息属于首次发现或页面变化，不代表今日发布。\n详情：{{DOCUMENT_URL}}`;

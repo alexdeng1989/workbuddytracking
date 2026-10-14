@@ -3,7 +3,7 @@
 1. EdgeOne：新建 Git 项目，选择当前仓库，构建 `npm run build`，产物 `dist`。在服务端环境配置强随机 `CRON_SECRET`（至少32字符）。确认8条定时任务的时区、请求体和路径。直接上传文档仅保证 redirects/rewrites/headers，不能据此假定定时任务生效。
 2. 腾讯文档：开发者应用须拥有文件、文档、权限管理范围，经用户 OAuth 获取 refresh token 和 open ID。设置内部目标目录、已确认读者的 OpenIDs。系统新建文档后设 `members`，读者 `reader`，回读正文与权限；不得自动改成公开链接。API检查不替代群成员手机实际打开一次。
 3. 企业微信：从既有群机器人取得 Webhook，保存服务端变量；不新建机器人、不改群成员。消息不带私人建议，文档验证失败时停止群发。
-4. 邮件：配置专用 SMTP 发信账号；收件地址只保存环境变量。SMTP接受只能证明服务器接收，最终到达需用户首次收件确认。
+4. 邮件：用户选择现有 Outlook。设 `EMAIL_TRANSPORT=graph`，注册支持个人 Microsoft 账号的应用，仅请求委托 `Mail.Send` 与 `offline_access`，授权后在独立服务端配置 client ID、refresh token（Web应用还需 client secret）。程序通过 Microsoft Graph 发送并保留已发送副本；本聊天中的 Outlook 连接不能直接变成 EdgeOne 的凭据。Graph 202/SMTP接受只证明服务器接收，最终到达需首次收件确认。SMTP保留为替代适配器，不要求用户提供账户密码。
 5. 搜索/模型：可选 Tavily 和已确认 OpenAI-compatible 服务，先核价，再设置 `PAID_SERVICES_ENABLED=true`。没有密钥显示缺口，模型输出仅接受能在来源中逐字匹配的事实摘录。
 6. 视频号：先核实平台账号 ID。接口由供应商合同或获授权采集服务提供，不使用个人微信会话或绕过访问限制。`VIDEO_FEED_URL` 按下述格式返回；异步转写在供应商侧完成，长视频不在云函数中下载处理。
 
@@ -37,3 +37,5 @@ GET HTTPS，Bearer `VIDEO_FEED_TOKEN`，查询参数 `account_id` 和 `since`（
 - https://docs.qq.com/open/document/app/openapi/v3/doc/
 - https://developer.work.weixin.qq.com/document/path/91770
 - https://docs.tavily.com/documentation/api-reference/endpoint/search
+- https://learn.microsoft.com/en-us/graph/api/user-sendmail?view=graph-rest-1.0
+- https://learn.microsoft.com/en-us/graph/permissions-reference#mail-send

@@ -33,7 +33,8 @@ export async function deliverOnce(store, key, content, send) {
 }
 export function uniqueEvents(items) {
   const events=new Map();
-  for (const item of items) {
+  const latest=new Map();for(const item of items){const key=canonicalUrl(item.url),old=latest.get(key);if(!old||item.firstSeenAt>old.firstSeenAt)latest.set(key,item);}
+  for (const item of latest.values()) {
     // Only merge verified shared event identifiers. Similar titles alone are not evidence.
     const key=item.eventKey || canonicalUrl(item.url);
     const old=events.get(key);
@@ -45,4 +46,4 @@ export function uniqueEvents(items) {
   }
   return [...events.values()];
 }
-export const publicItem = item => Object.fromEntries(['sourceId','entity','group','channel','url','title','publishedAt','eventDate','deadline','firstSeenAt','disclosure','facts','sources','classification'].map(k=>[k,item[k]??null]));
+export const publicItem = item => Object.fromEntries(['sourceId','entity','group','channel','url','title','publishedAt','updatedAt','eventDate','deadline','firstSeenAt','disclosure','relation','facts','sources','classification'].map(k=>[k,item[k]??null]));

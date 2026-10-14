@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {authorized,beijingDate,isWeekday,deliverOnce,DeliveryError,uniqueEvents} from '../src/core.mjs';
-import {compileReport,groundedFacts,privateAdvice} from '../src/report.mjs';
+import {compileReport,groundedFacts,privateAdvice,labeledDate} from '../src/report.mjs';
 import {parsePage,collectSource} from '../src/collect.mjs';
 import {runJob,handler} from '../src/jobs.mjs';
-import {TencentDocs,docText} from '../src/publish.mjs';
+import {TencentDocs,docText,sendGraphMail} from '../src/publish.mjs';
 const memory=()=>{const data=new Map();return {get:async k=>data.get(k)??null,set:async(k,v)=>{data.set(k,structuredClone(v));},data};};
 const item={id:'one',sourceId:'x',entity:'测试同行',group:'priority',channel:'website',url:'https://example.com/event',title:'WorkBuddy 公开课',publishedAt:'2026-10-10T00:00:00Z',firstSeenAt:'2026-10-11T08:00:00Z',facts:[{text:'WorkBuddy 公开课报名活动，原文披露服务范围。',quote:'WorkBuddy 公开课报名活动，原文披露服务范围。'}],disclosure:'对方披露',evidenceText:'WorkBuddy 公开课报名活动，原文披露服务范围。'};
 test('Beijing weekday boundary and Monday includes weekend',()=>{
@@ -28,3 +28,10 @@ test('endpoint rejects unauthenticated scheduler before opening stores',async()=
 test('document requires explicit internal readers before creating',async()=>{const docs=new TencentDocs({},memory());await assert.rejects(docs.publish({date:'2026-10-14',version:'1'}),/readers_not_configured/);});
 test('ambiguous document creation never creates duplicate',async()=>{const s=memory();await s.set('documents/2026-10-14/1',{status:'creating'});const docs=new TencentDocs({TENCENT_READER_IDS:'reader'},s);await assert.rejects(docs.publish({date:'2026-10-14',version:'1'}),/creation_unknown/);});
 test('Tencent text traversal uses documented Text nodes and paragraph separators',()=>{assert.equal(docText({document:{type:'Paragraph',children:[{type:'Text',text:'a'},{type:'Text',text:'b'}]}}),'ab\n');});
+test('Graph refresh token rotates and only fixed configured recipient receives advice',async()=>{const store=memory();let calls=[];const fetcher=async(url,options)=>{calls.push({url,options});return url.includes('/token')?Response.json({access_token:'access',refresh_token:'rotated',expires_in:3600}):new Response(null,{status:202,headers:{'request-id':'test-request'}});};const result=await sendGraphMail({date:'2026-10-14',reportVersion:'v1',subject:'private',text:'private advice'},{MICROSOFT_CLIENT_ID:'client',MICROSOFT_REFRESH_TOKEN:'initial',PRIVATE_EMAIL_TO:'user@example.com'},store,fetcher);assert.equal(result.accepted,true);assert.equal((await store.get('auth/microsoft')).refreshToken,'rotated');const payload=JSON.parse(calls[1].options.body);assert.equal(payload.message.toRecipients[0].emailAddress.address,'user@example.com');assert.equal(payload.saveToSentItems,true);});
+test('Graph timeout after accepted request is ambiguous and cannot be retried blindly',async()=>{const store=memory();await store.set('auth/microsoft',{accessToken:'x',expiresAt:Date.now()+1000000});await assert.rejects(sendGraphMail({},{MICROSOFT_CLIENT_ID:'x',MICROSOFT_REFRESH_TOKEN:'x',PRIVATE_EMAIL_TO:'user@example.com'},store,async()=>{throw Error('timeout');}),e=>e.message==='graph_send_unknown'&&!e.definite);});
+test('small contact main does not hide the actual product content',()=>{const p=parsePage('<title>产品</title><div>WorkBuddy 企业版最新活动权益，按账号数与订阅时长赠送积分。</div><main>联系我们</main>','https://example.com');assert.match(p.material,/赠送积分/);});
+test('official modification date is recorded separately from publication date',()=>{const p=parsePage('<title>管理指南</title><body>最近更新时间：2026-10-14 12:18:00<p>WorkBuddy 订阅管理的说明</p></body>','https://example.com');assert.equal(p.publishedAt,null);assert.equal(p.updatedAt,'2026-10-14T04:18:00.000Z');});
+test('event dates need an explicit label and full valid year-month-day',()=>{assert.equal(labeledDate('活动时间：2026年10月16日','活动时间'),'2026-10-16');assert.equal(labeledDate('活动时间：10月16日','活动时间'),null);assert.equal(labeledDate('活动时间：2026年2月30日','活动时间'),null);});
+test('already reported future events remain in calendar without returning to headlines',()=>{const r=compileReport({date:'2026-10-14',now:'2026-10-14T00:00:00Z',cutoff:'2026-10-13T00:00:00Z',items:[],calendarItems:[{...item,eventDate:'2026-10-16'}],coverage:[]});assert.equal(r.items.length,0);assert.match(r.detail,/活动日期：2026-10-16/);});
+test('latest page revision replaces conflicting prior price in one report',()=>{const r=uniqueEvents([item,{...item,firstSeenAt:'2026-10-14T00:00:00Z',facts:[{text:'新价格'}]}]);assert.equal(r.length,1);assert.deepEqual(r[0].facts,[{text:'新价格'}]);});
