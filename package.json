@@ -1,0 +1,7 @@
+{
+  "name": "workbuddy-monitor", "version": "0.1.0", "private": true, "type": "module",
+  "engines": {"node": ">=20.18.1"},
+  "scripts": {"test": "node --test", "collect": "node scripts/run.mjs collect", "report": "node scripts/run.mjs report", "doctor": "node scripts/run.mjs doctor", "build": "node scripts/build.mjs"},
+  "dependencies": {"@edgeone/pages-blob": "0.0.18", "cheerio": "1.2.0", "nodemailer": "10.1.1"},
+  "devDependencies": {"esbuild": "0.25.12"}
+}
