@@ -42,7 +42,7 @@ async function website(source,previous,now,store) {
     }
     seen[p.url]=fingerprint; changed++;
   }
-  return {status:failures.length?'partial':changed?'changed':'no_new',lastSuccessAt:now,seen,candidates:candidates.filter(c=>c.firstSeenAt>=sinceDays(now,40)),failures};
+  return {status:failures.length?'partial':changed?'changed':'no_new',lastSuccessAt:now,seen,candidates:candidates.filter(c=>c.firstSeenAt>=sinceDays(now,40)),failures,note:failures.length?`${failures.length} 个关联页面未读取：${[...new Set(failures)].join('、')}`:null};
 }
 async function wechat(source,previous,now,store) {
   if(!source.accountName)return {status:'unconfigured',note:source.note};

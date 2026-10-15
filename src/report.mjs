@@ -1,6 +1,6 @@
 import {beijingDate,hash,publicItem,sinceDays,uniqueEvents} from './core.mjs';
 import {labels} from './sources.mjs';
-const short=(s,n)=>[...(s||'')].slice(0,n).join('');
+const short=(s,n)=>[...(s||'')].slice(0,n).join('')+([...(s||'')].length>n?'…':'');
 const importance=text=>(/活动时间|活动奖励|参与方式|报名截止|直播时间/.test(text)?10:0)+(/价格|\d+\s*元|赠送|权益|招募|伙伴计划|培训/.test(text)?6:0)+(/服务|部署|积分/.test(text)?2:0);
 export function labeledDate(text,label){
   const m=text.match(new RegExp(`${label}[：:\\s]{0,3}(20\\d{2})\\s*[年/.-]\\s*(\\d{1,2})\\s*[月/.-]\\s*(\\d{1,2})\\s*日?`));
