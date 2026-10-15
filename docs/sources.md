@@ -1,11 +1,11 @@
 # 首批来源与账号对应关系
 
-核验日期：2026-10-14。实体名称对应不代表所有关联账号已获得内容采集权限。
+核验日期：2026-10-15。实体名称对应不代表所有关联账号已获得内容采集权限。
 
 |对象|官网与身份依据|公众号|视频号|纳入规则|
 |---|---|---|---|---|
-|WorkBuddy 官方|https://www.workbuddy.cn/ 、https://cloud.tencent.com/product/workbuddy 、https://open.workbuddy.cn/|待核验主体|待核验主体|公告、权益、企业版、活动、伙伴政策|
-|景栗科技|https://www.gemii.cc/ 、https://www.gemii.cc/news|待确认平台账号|待确认平台账号|每日必查；AI运营/FDE等标记相关业务，不自动等同WorkBuddy|
+|WorkBuddy 官方|https://www.workbuddy.cn/ 、https://cloud.tencent.com/product/workbuddy 、https://open.workbuddy.cn/|官方联系文档列出二维码；公开索引查询“腾讯 WorkBuddy”，全文未接通|官方联系文档列出二维码，已解码；视频列表与正文未获取|公告、权益、企业版、活动、伙伴政策|
+|景栗科技|https://www.gemii.cc/ 、https://www.gemii.cc/news|官网二维码已核验；公开索引查询“景栗科技”，同名作者仍需核验主体|待确认平台账号|每日必查；AI运营/FDE等标记相关业务，不自动等同WorkBuddy|
 |零一数科|https://www.lingyishuke.com/|官网关联“零一数科”，文章入口待接|官网关联“运营深度精选”，平台ID待核验|每日必查；零一裂变、哪吒AI运营仅按已确认关系关联|
 |企动云|https://qdy.net.cn/|待核验|待核验|候选同行，逐条核查推广/交付业务|
 |安思派|https://anspire.cn/news/workbuddy-provider-classification/|待核验|待核验|候选同行，效果/授权称谓视为对方披露|
@@ -14,3 +14,7 @@
 官网链接已列入配置；公众号和视频号缺少接口时仍保留独立检查记录。腾讯云开发者社区文章须检查作者身份，不能仅按域名归官方。
 
 首轮采集只覆盖可访问网页与首页关联链接。近30天全量历史、视频直播回放及登录可见文章尚未达到完整覆盖；后续接入必须补回填并记录缺口。
+
+新增固定检查入口：零一资讯 https://www.lingyishuke.com/about/news 。官网新闻列表日期会传递给文章，旧条目不会作为近30天新增。校园活动 https://www.workbuddy.cn/events/campus-freshman/ 从其公开脚本中的规则数据采集，保留入口、脚本地址和原文证据，不执行脚本，也不把脚本内未显示的“活动已结束”分支当作当前状态。
+
+公众号自动检查使用搜狗公开索引，来源名称严格匹配、保留索引日期与摘要。搜索不是账号全量列表，也不能凭同名验证认证主体；因此检查成功仍标记“部分完成”，线索不进入日报事实摘要。视频号三项持续保留缺口记录，没有视频、字幕或口播依据时不生成内容总结。

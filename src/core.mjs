@@ -46,4 +46,4 @@ export function uniqueEvents(items) {
   }
   return [...events.values()];
 }
-export const publicItem = item => Object.fromEntries(['sourceId','entity','group','channel','url','title','publishedAt','updatedAt','eventDate','deadline','firstSeenAt','disclosure','relation','facts','sources','classification'].map(k=>[k,item[k]??null]));
+export const publicItem = item => Object.fromEntries(['sourceId','entity','group','channel','url','title','publishedAt','updatedAt','eventDate','eventEndDate','deadline','firstSeenAt','disclosure','relation','facts','sources','classification'].map(k=>[k,item[k]??null]));

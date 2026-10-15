@@ -1,0 +1,12 @@
+import {mkdir,writeFile} from 'node:fs/promises';
+process.loadEnvFile('.env');
+const response=await fetch('https://workbuddytracking.edgeone.dev/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:process.env.CRON_SECRET}),signal:AbortSignal.timeout(30000)});
+if(!response.ok)throw Error(`preview_http_${response.status}`);
+const {report}=await response.json();if(!report?.detail)throw Error('preview_missing');
+const esc=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const content=esc(report.detail).replace(/https:\/\/[^\s<]+/g,u=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+const html=`<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WorkBuddy 日报 ${report.date}</title><style>body{max-width:900px;margin:40px auto;padding:0 24px;font:16px/1.85 system-ui;color:#203040;background:#f8fafc}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;background:white;padding:28px;border:1px solid #dde3eb;border-radius:12px}a{color:#1763aa}small{color:#687586}</style><h1>WorkBuddy 日报 · ${report.date}</h1><small>云端自动生成 · 尚未群发 · ${esc(report.version)} · ${esc(report.through)}</small><pre>${content}</pre></html>`;
+await mkdir('.local/previews',{recursive:true});
+for(const name of [report.date,'latest'])await writeFile(`.local/previews/${name}.html`,html,{mode:0o600});
+await writeFile(`.local/previews/${report.date}.json`,JSON.stringify(report,null,2),{mode:0o600});
+console.log(JSON.stringify({path:`.local/previews/${report.date}.html`,date:report.date,version:report.version,coverage:report.coverage.length}));
